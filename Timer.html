@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Round Timer</title>
+  <style>
+    :root {
+      --bg: #0f172a;          /* slate-900 */
+      --panel: #111827;       /* gray-900 */
+      --muted: #9ca3af;       /* gray-400 */
+      --text: #e5e7eb;        /* gray-200 */
+      --accent: #22c55e;      /* green-500 */
+      --accent-2: #3b82f6;    /* blue-500 */
+      --danger: #ef4444;      /* red-500 */
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100dvh; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 70% -10%, #1f2937 0, #0b1222 50%, var(--bg) 100%);
+      color: var(--text);
+      display: grid; place-items: center; padding: 24px;
+    }
+    .card {
+      width: min(900px, 96vw);
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      padding: 22px 22px 26px;
+      backdrop-filter: blur(6px);
+    }
+    header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom: 12px; }
+    h1 { font-size: clamp(18px, 2.6vw, 24px); margin: 0; letter-spacing: .3px; font-weight: 700; }
+    .subtitle { color: var(--muted); font-size: 12px; }
+
+    .grid {
+      display:grid; grid-template-columns: 1.2fr .8fr; gap: 18px; align-items: stretch;
+    }
+
+    .display {
+      background: var(--panel); border: 1px solid rgba(255,255,255,.06);
+      border-radius: 16px; padding: 24px; display:grid; gap: 16px;
+    }
+    .time {
+      font-variant-numeric: tabular-nums; letter-spacing: .5px;
+      font-size: clamp(42px, 10vw, 96px); line-height: 1; text-align:center;
+    }
+    .rounds { display:flex; align-items:center; justify-content:center; gap:10px; }
+    .badge {
+      border-radius: 999px; padding: 6px 12px; background: rgba(59,130,246,.15); border: 1px solid rgba(59,130,246,.35);
+      font-size: 13px; color:#bfdbfe;
+    }
+
+    .controls {
+      display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:center;
+    }
+    button, .ghost {
+      appearance:none; border:none; cursor:pointer; border-radius: 14px; padding: 12px 16px; font-weight: 600; font-size: 14px;
+      transition: transform .06s ease, box-shadow .2s ease, background .2s ease;
+    }
+    button.primary { background: var(--accent); color: #052e12; box-shadow: 0 10px 24px rgba(34,197,94,.35); }
+    button.primary:active { transform: translateY(1px); }
+    button.warn { background: rgba(239,68,68,.12); color: #fecaca; border: 1px solid rgba(239,68,68,.4); }
+    button.secondary { background: rgba(255,255,255,.08); color: var(--text); border: 1px solid rgba(255,255,255,.15); }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+
+    .panel {
+      background: var(--panel); border: 1px solid rgba(255,255,255,.06); border-radius: 16px; padding: 18px; display:grid; gap: 14px;
+    }
+
+    .form-row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    label { font-size: 13px; color: var(--muted); margin-bottom: 6px; display:block; }
+    input[type="number"] {
+      width: 100%; padding: 12px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); color: var(--text);
+      font-size: 16px; font-variant-numeric: tabular-nums; outline: none;
+    }
+    .row { display:flex; gap:12px; align-items:center; }
+    .check {
+      display:flex; align-items:center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04); color: var(--text);
+    }
+    .spaced { display:flex; justify-content:space-between; align-items:center; }
+
+    .sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 1px, 1px); white-space: nowrap; border: 0; }
+
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card" role="application" aria-label="Round Timer">
+    <header>
+      <div>
+        <h1>Round Timer</h1>
+        <div class="subtitle">Program a duration. Each time it hits 0, the round counter increments.</div>
+      </div>
+      <div class="badge" id="status">Idle</div>
+    </header>
+
+    <div class="grid">
+      <section class="display" aria-live="polite">
+        <div class="time" id="time">00:00</div>
+        <div class="rounds">
+          <span class="badge">Rounds</span>
+          <div class="time" id="rounds" style="font-size: clamp(28px, 5vw, 44px);">0</div>
+        </div>
+        <div class="controls">
+          <button id="startPause" class="primary" type="button">Start</button>
+          <button id="reset" class="secondary" type="button" disabled>Reset</button>
+          <button id="minusRound" class="warn" type="button" title="Decrease rounds">− Round</button>
+          <button id="plusRound" class="secondary" type="button" title="Increase rounds">+ Round</button>
+        </div>
+      </section>
+
+      <aside class="panel" aria-label="Timer Settings">
+        <div class="form-row">
+          <div>
+            <label for="minutes">Minutes</label>
+            <input id="minutes" type="number" min="0" max="999" step="1" value="0" />
+          </div>
+          <div>
+            <label for="seconds">Seconds</label>
+            <input id="seconds" type="number" min="0" max="59" step="1" value="30" />
+          </div>
+        </div>
+        <div class="row">
+          <label class="check"><input id="autoRepeat" type="checkbox" checked /> Auto‑repeat when finished</label>
+        </div>
+        <div class="row spaced">
+          <label class="check" title="Play a short beep at 0"><input id="beep" type="checkbox" checked /> Beep at end</label>
+          <button id="apply" class="secondary" type="button" title="Apply duration without starting">Apply</button>
+        </div>
+        <small class="subtitle">Tip: Press <strong>Space</strong> to start/pause, <strong>R</strong> to reset.</small>
+      </aside>
+    </div>
+  </div>
+
+  <audio id="beeper" class="sr" preload="auto"></audio>
+
+  <script>
+    // --- Small tone generator for the beep ---
+    function beep() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(880, ctx.currentTime);
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.22);
+      o.connect(g).connect(ctx.destination);
+      o.start();
+      o.stop(ctx.currentTime + 0.25);
+    }
+
+    const $ = (id) => document.getElementById(id);
+    const timeEl = $('time');
+    const roundsEl = $('rounds');
+    const startPauseBtn = $('startPause');
+    const resetBtn = $('reset');
+    const applyBtn = $('apply');
+    const statusBadge = $('status');
+
+    const minutesIn = $('minutes');
+    const secondsIn = $('seconds');
+    const autoRepeatIn = $('autoRepeat');
+    const beepIn = $('beep');
+
+    let durationMs = 30_000;        // default 30s
+    let endAt = null;               // timestamp when countdown hits zero
+    let remainingMs = durationMs;   // remaining if paused / before start
+    let ticking = null;             // interval id
+    let rounds = 0;
+
+    function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
+
+    function fmt(ms) {
+      ms = Math.max(0, ms|0);
+      const total = Math.round(ms / 1000);
+      const m = Math.floor(total / 60);
+      const s = total % 60;
+      return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+
+    function setStatus(txt) { statusBadge.textContent = txt; }
+
+    function render() {
+      timeEl.textContent = fmt(remainingMs);
+      roundsEl.textContent = String(rounds);
+      resetBtn.disabled = remainingMs === durationMs && rounds === 0 && !ticking;
+      startPauseBtn.textContent = ticking ? 'Pause' : (remainingMs === durationMs ? 'Start' : 'Resume');
+    }
+
+    function applyDuration() {
+      const m = clamp(parseInt(minutesIn.value || '0', 10), 0, 999);
+      const s = clamp(parseInt(secondsIn.value || '0', 10), 0, 59);
+      minutesIn.value = m; secondsIn.value = s;
+      const total = m * 60 + s;
+      durationMs = Math.max(0, total) * 1000;
+      if (!ticking) {
+        remainingMs = durationMs;
+        render();
+      }
+    }
+
+    function tick() {
+      const now = Date.now();
+      remainingMs = Math.max(0, endAt - now);
+      timeEl.textContent = fmt(remainingMs);
+      if (remainingMs <= 0) {
+        // round complete
+        if (beepIn.checked) beep();
+        rounds += 1;
+        roundsEl.textContent = String(rounds);
+        if (autoRepeatIn.checked && durationMs > 0) {
+          endAt = Date.now() + durationMs;
+          remainingMs = durationMs;
+        } else {
+          stop();
+          setStatus('Finished');
+          render();
+        }
+      }
+    }
+
+    function start() {
+      if (durationMs <= 0) { setStatus('Set a duration > 0'); return; }
+      if (ticking) return; // already running
+      if (remainingMs <= 0 || remainingMs > durationMs) remainingMs = durationMs;
+      endAt = Date.now() + remainingMs;
+      ticking = setInterval(tick, 100);
+      setStatus('Running');
+      render();
+    }
+
+    function pause() {
+      if (!ticking) return;
+      clearInterval(ticking); ticking = null;
+      remainingMs = Math.max(0, endAt - Date.now());
+      setStatus('Paused');
+      render();
+    }
+
+    function stop() { if (ticking) { clearInterval(ticking); ticking = null; } }
+
+    function reset() {
+      stop();
+      remainingMs = durationMs;
+      rounds = 0;
+      setStatus('Idle');
+      render();
+    }
+
+    // Button bindings
+    startPauseBtn.addEventListener('click', () => ticking ? pause() : start());
+    resetBtn.addEventListener('click', reset);
+    applyBtn.addEventListener('click', applyDuration);
+
+    $('plusRound').addEventListener('click', () => { rounds += 1; render(); });
+    $('minusRound').addEventListener('click', () => { rounds = Math.max(0, rounds - 1); render(); });
+
+    // Update duration when inputs change (without interrupting an active run)
+    [minutesIn, secondsIn].forEach(inp => inp.addEventListener('change', () => {
+      const wasRunning = !!ticking;
+      applyDuration();
+      if (!wasRunning) render();
+    }));
+
+    // Keyboard shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT'].includes(document.activeElement.tagName)) return; // don't hijack while typing
+      if (e.code === 'Space') { e.preventDefault(); ticking ? pause() : start(); }
+      if (e.key.toLowerCase() === 'r') { e.preventDefault(); reset(); }
+    });
+
+    // Initialize
+    applyDuration();
+    render();
+  </script>
+</body>
+</html>
