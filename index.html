@@ -164,7 +164,6 @@
     const minutesIn = $('minutes');
     const secondsIn = $('seconds');
     const autoRepeatIn = $('autoRepeat');
-    const beepIn = $('beep');
 
     let durationMs = 30_000;        // default 30s
     let endAt = null;               // timestamp when countdown hits zero
@@ -207,11 +206,12 @@
       const now = Date.now();
       remainingMs = Math.max(0, endAt - now);
       timeEl.textContent = fmt(remainingMs);
+    
       if (remainingMs <= 0) {
         // round complete
-        if (beepIn.checked) beep();
         rounds += 1;
         roundsEl.textContent = String(rounds);
+    
         if (autoRepeatIn.checked && durationMs > 0) {
           endAt = Date.now() + durationMs;
           remainingMs = durationMs;
@@ -222,6 +222,7 @@
         }
       }
     }
+
 
     function start() {
       if (durationMs <= 0) { setStatus('Set a duration > 0'); return; }
@@ -279,4 +280,5 @@
   </script>
 </body>
 </html>
+
 
